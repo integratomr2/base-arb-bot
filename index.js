@@ -2,9 +2,11 @@ import { ethers } from "ethers";
 
 const CONFIG = {
   RPC_URL: process.env.BASE_RPC_URL || "https://base-mainnet.g.alchemy.com/v2/alch_xGpsTWPEHzlsZl1ynhV6m",
-  EXECUTOR_ADDRESS: "0xc7467c2cc9200a1437ba32d4647be3dfd4f1a72d",
-  MIN_SPREAD_THRESHOLD: 0.60, // 0.60% total DEX fee hurdle
+  EXECUTOR_ADDRESS: "0x2aed98dc6b27b9d2f815f6bf4a27b069d8e565e6",
+  BURNER_PRIVATE_KEY: process.env.BURNER_PRIVATE_KEY || "",
+  MIN_SPREAD_THRESHOLD: 0.60,
   SCAN_AMOUNT_USD: 2500,
+  BENEFICIARY: "0x8e4bfc7253c7d5584d9b13fa786a3a78c243cebe"
 };
 
 const POOLS = [
@@ -30,18 +32,41 @@ const AERO_ABI = [
 const UNI_ABI = [
   "function slot0() external view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint8 feeProtocol, bool unlocked)"
 ];
+const EXECUTOR_ABI = [
+  "function owner() external view returns (address)",
+  "function caller() external view returns (address)",
+  "function executeArb((address tokenBorrowed, uint256 amountBorrowed, address routerBuy, bytes buyCalldata, address tokenIntermediate, address routerSell, bytes sellCalldata, uint256 minProfit) params) external"
+];
 
 async function main() {
   console.log("==================================================");
-  console.log("   BASE FLASH LOAN DEX ARB SCANNER (24/7 ACTIVE)  ");
+  console.log("   BASE FLASH LOAN DEX ARB SCANNER V2 (24/7)      ");
   console.log("==================================================");
   console.log(`RPC Endpoint: Alchemy Base`);
-  console.log(`Executor Contract: ${CONFIG.EXECUTOR_ADDRESS}`);
+  console.log(`Executor V2 Contract: ${CONFIG.EXECUTOR_ADDRESS}`);
+  console.log(`Profit Beneficiary: ${CONFIG.BENEFICIARY}`);
   console.log(`Fee Hurdle: ${CONFIG.MIN_SPREAD_THRESHOLD}%`);
   console.log(`Trade Size: $${CONFIG.SCAN_AMOUNT_USD}`);
-  console.log(`Listening to Base blocks...\n`);
 
   const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
+
+  let burnerWallet = null;
+  if (CONFIG.BURNER_PRIVATE_KEY) {
+    burnerWallet = new ethers.Wallet(CONFIG.BURNER_PRIVATE_KEY, provider);
+    console.log(`Burner Execution Wallet: ${burnerWallet.address}`);
+    const balance = await provider.getBalance(burnerWallet.address);
+    console.log(`Burner Gas Reserve: ${ethers.formatEther(balance)} ETH`);
+  } else {
+    console.log("Notice: No BURNER_PRIVATE_KEY set, running in simulation mode");
+  }
+
+  const executor = new ethers.Contract(CONFIG.EXECUTOR_ADDRESS, EXECUTOR_ABI, provider);
+  const contractOwner = await executor.owner();
+  const authorizedCaller = await executor.caller();
+  console.log(`Contract Owner (Admin/Beneficiary): ${contractOwner}`);
+  console.log(`Authorized Caller (Burner): ${authorizedCaller}`);
+  console.log(`Scanning Base blocks...\n`);
+
   let isScanning = false;
 
   provider.on("block", async (blockNumber) => {
