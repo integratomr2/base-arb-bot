@@ -20,7 +20,9 @@ const TOKENS = [
   { symbol: "VIRTUAL", addr: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b", feeUni: 3000 },
   { symbol: "AERO", addr: "0x940181a94A35A4569E4529A3CDfB74e38FD98631", feeUni: 3000 },
   { symbol: "DEGEN", addr: "0x4ED4e862860Be51AC13657B875920A4C83b60441", feeUni: 3000 },
-  { symbol: "TOSHI", addr: "0xAC1Bd2486aAf3B5C0fc3Fd868558b082a531B2B4", feeUni: 3000 }
+  { symbol: "TOSHI", addr: "0xAC1Bd2486aAf3B5C0fc3Fd868558b082a531B2B4", feeUni: 3000 },
+  { symbol: "BRETT", addr: "0x532f27101965dd16442e59d40670faf5ebb142e4", feeUni: 10000 },
+  { symbol: "BNKR", addr: "0x22af33fe49fd1fa80c7149773dde5890d3c76f3b", feeUni: 10000 }
 ];
 
 // Dynamic test slice sizes in WETH: ~$45, ~$110, ~$225, ~$560, ~$1120
@@ -44,7 +46,7 @@ const AERO_ROUTER_ABI = [
 
 async function main() {
   console.log("==================================================");
-  console.log("   BASE FLASH ARB ENGINE — DYNAMIC AUTO-SIZING    ");
+  console.log("   BASE FLASH ARB ENGINE — 7 TOKENS AUTO-SIZING   ");
   console.log("==================================================");
   console.log(`Executor V2: ${CONFIG.EXECUTOR_ADDRESS}`);
   console.log(`Profit Beneficiary: ${CONFIG.BENEFICIARY}`);
@@ -81,7 +83,6 @@ async function main() {
         let bestProfitUsd = 0;
         let bestSizeWeth = null;
         let bestDirection = "";
-        let bestTokenOut = 0n;
 
         for (const sizeEth of TEST_SIZES_ETH) {
           const borrowAmt = ethers.parseEther(sizeEth);
@@ -100,7 +101,6 @@ async function main() {
               bestProfitUsd = netUsd;
               bestSizeWeth = borrowAmt;
               bestDirection = "Uni->Aero";
-              bestTokenOut = q.amountOut;
             }
           } catch (_) {}
 
@@ -118,7 +118,6 @@ async function main() {
               bestProfitUsd = netUsd;
               bestSizeWeth = borrowAmt;
               bestDirection = "Aero->Uni";
-              bestTokenOut = out[1];
             }
           } catch (_) {}
         }
@@ -193,7 +192,7 @@ async function main() {
         }
       }
 
-      console.log(`[${timestamp} | Block ${blockNumber}] Monitoring 5 verified pairs with dynamic auto-sizing...`);
+      console.log(`[${timestamp} | Block ${blockNumber}] Monitoring 7 verified pairs with dynamic auto-sizing...`);
     } catch (err) {
       console.error("Scan loop error:", err.message);
     } finally {
